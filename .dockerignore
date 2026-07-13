@@ -1,0 +1,9 @@
+**/node_modules
+**/*.db
+**/*.db-wal
+**/*.db-shm
+server/data
+.git
+.gitignore
+*.md
+docs

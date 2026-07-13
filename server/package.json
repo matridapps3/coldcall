@@ -1,0 +1,23 @@
+{
+  "name": "conyso-outreach-server",
+  "version": "1.0.0",
+  "description": "Conyso Outreach — template-based cold-call console. Per-mode lead pools, claim queue, call scripts, WhatsApp click-to-chat templates, and an outcome-branching sequence engine. Present-only: no telephony, no WhatsApp API, no LLM.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20 <23"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "test": "node --test test/",
+    "backup": "node scripts/backup.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1",
+    "express": "^4.21.0",
+    "multer": "^2.2.0",
+    "zod": "^3.23.8"
+  }
+}

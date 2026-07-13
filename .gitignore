@@ -1,0 +1,13 @@
+node_modules/
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# secrets and local env
+.env
+*.env
+!.env.example
+
+# local db backups
+*.bak-before-reset
