@@ -17,7 +17,8 @@ ENV NODE_ENV=production \
 COPY --from=builder /app/server ./
 RUN mkdir -p /data && chown -R node:node /data /app
 USER node
-VOLUME ["/data"]
+# Persistence is provided by a Railway Volume mounted at /data (DATA_DIR=/data).
+# Railway rejects the Docker VOLUME instruction, so it is intentionally omitted.
 EXPOSE 3009
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3009)+'/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
