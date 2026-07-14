@@ -351,7 +351,9 @@ pre.prompt { white-space: pre-wrap; word-break: break-word; background: var(--bg
 .card.row.wrap select { width: auto; }
 
 /* --- stat cards --- */
-.grid.cols4 { gap: 14px; }
+/* cols4 is the dashboard KPI row; it needs the same bottom rhythm as a card so
+   it does not visually collide with the panel directly beneath it. */
+.grid.cols4 { gap: 14px; margin-bottom: 16px; }
 .stat { position: relative; overflow: hidden; padding: 18px 20px; box-shadow: var(--sh-1);
   transition: border-color var(--dur) var(--ease); }
 .stat::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 3px;
@@ -360,6 +362,20 @@ pre.prompt { white-space: pre-wrap; word-break: break-word; background: var(--bg
 .stat .n { font-size: var(--t-2xl); font-weight: 750; letter-spacing: -.035em; line-height: 1; }
 .stat .k { color: var(--muted); font-size: var(--t-sm); margin-top: 6px; }
 
+/* KPI tones: numbers pick up a light semantic colour, and each card's left
+   accent bar is tinted to match — reads as a funnel from cool (incoming) to
+   amber (in motion) to green (won). */
+.stat.tone-info    .n { color: var(--accent-hi); }
+.stat.tone-accent  .n { color: var(--accent); }
+.stat.tone-bad     .n { color: var(--bad); }
+.stat.tone-warn    .n { color: var(--warn); }
+.stat.tone-good    .n { color: var(--good); }
+.stat.tone-info::before    { background: linear-gradient(180deg, var(--accent-hi), var(--accent)); }
+.stat.tone-accent::before  { background: linear-gradient(180deg, var(--accent), var(--accent-lo)); }
+.stat.tone-bad::before     { background: linear-gradient(180deg, var(--bad), #dc2626); opacity: 1; }
+.stat.tone-warn::before    { background: linear-gradient(180deg, var(--warn), #d59200); opacity: 1; }
+.stat.tone-good::before    { background: linear-gradient(180deg, var(--good), #10b981); opacity: 1; }
+
 /* --- tables --- */
 table { font-size: 13.5px; }
 th { font-size: 10.5px; letter-spacing: .07em; }
@@ -367,6 +383,10 @@ tbody tr { transition: background var(--dur) var(--ease); }
 tbody tr:hover { background: var(--panel2); }
 td .muted.small, td.small { font-variant-numeric: tabular-nums; }
 td.good, .good { color: var(--good); }
+/* empty-state rows (the only cells that span the full table) read as centered,
+   breathing placeholders instead of cramped left-aligned text. */
+td[colspan] { text-align: center; padding: 26px 12px; color: var(--muted); }
+tbody tr:hover td[colspan] { background: transparent; }
 
 /* --- list-item rows (mode editor, sequence, nav) --- */
 .list-item { background: var(--bg2); border-color: var(--line); border-radius: var(--radius-sm);

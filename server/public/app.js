@@ -126,7 +126,7 @@ function renderView() {
 async function viewNumbers(v) {
   v.innerHTML = skel(4) + skel(3);
   const [s, f] = await Promise.all([api('GET', '/api/stats'), api('GET', '/api/stats/funnel')]);
-  const stat = (n, k) => `<div class="stat"><div class="n">${n}</div><div class="k">${k}</div></div>`;
+  const stat = (n, k, tone = '') => `<div class="stat ${tone}"><div class="n">${n}</div><div class="k">${k}</div></div>`;
   const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
   const medal = (i) => ['🥇', '🥈', '🥉'][i] || `${i + 1}`;
 
@@ -150,10 +150,10 @@ async function viewNumbers(v) {
 
   v.innerHTML = `
     <div class="grid cols4">
-      ${stat(s.callsToday, 'Calls today')}
-      ${stat(s.pipeline.pool, 'Leads in pool')}
-      ${stat(s.pipeline.active, 'In progress')}
-      ${stat(s.pipeline.won, 'Meetings / won')}
+      ${stat(s.callsToday, 'Calls today', 'tone-info')}
+      ${stat(s.pipeline.pool, 'Leads in pool', 'tone-bad')}
+      ${stat(s.pipeline.active, 'In progress', 'tone-warn')}
+      ${stat(s.pipeline.won, 'Meetings / won', 'tone-good')}
     </div>
     <div class="card"><h2>Conversion funnel</h2>
       <table><thead><tr><th>Mode</th><th>Leads</th><th>Contacted</th><th>Interested</th><th>Won</th><th>Lost</th></tr></thead>
@@ -165,7 +165,7 @@ async function viewNumbers(v) {
       <div class="card"><h2>Template performance <span class="muted small">A/B</span></h2>
         <table><thead><tr><th>Template</th><th>Mode</th><th>Sent</th><th>Won after</th><th>Win rate</th></tr></thead>
         <tbody>${tplRows}</tbody></table></div>
-      <div class="card"><h2>Outcomes</h2><table><tbody>${s.outcomes.map((o) => `<tr><td>${esc(o.outcome)}</td><td style="text-align:right">${o.n}</td></tr>`).join('') || '<tr><td class=muted>No calls logged</td></tr>'}</tbody></table></div>
+      <div class="card"><h2>Outcomes</h2><table><tbody>${s.outcomes.map((o) => `<tr><td>${esc(o.outcome)}</td><td style="text-align:right">${o.n}</td></tr>`).join('') || '<tr><td colspan=2 class=muted>No calls logged</td></tr>'}</tbody></table></div>
     </div>`;
 }
 
