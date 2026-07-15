@@ -10,6 +10,36 @@ const skel = (rows = 3, widths = ['40%', '85%', '65%']) =>
   `<div class="card">${Array.from({ length: rows }, (_, i) =>
     `<div class="skel skel-line" style="width:${widths[i % widths.length]}"></div>`).join('')}</div>`;
 
+// ---------- auto-sizing editor text boxes ----------
+// Script / template / navigator boxes grow to fit their content and stop at the
+// CSS max-height (~6 lines), scrolling past that. Height needs JS because CSS
+// cannot measure content. Views re-render innerHTML asynchronously in many
+// places, so a MutationObserver covers every render instead of each view having
+// to remember to call this.
+const AUTOSIZE_SEL = '.list-item textarea';
+function autosize(ta) {
+  const max = parseFloat(getComputedStyle(ta).maxHeight);
+  ta.style.height = 'auto';
+  // scrollHeight excludes borders; add them back so border-box height is exact.
+  const target = ta.scrollHeight + (ta.offsetHeight - ta.clientHeight);
+  ta.style.height = Math.min(target, Number.isFinite(max) ? max : Infinity) + 'px';
+}
+let autosizeQueued = false;
+function autosizeAll() {
+  autosizeQueued = false;
+  document.querySelectorAll(AUTOSIZE_SEL).forEach(autosize);
+}
+function queueAutosize() {
+  if (autosizeQueued) return;
+  autosizeQueued = true;
+  requestAnimationFrame(autosizeAll);
+}
+document.addEventListener('input', (e) => {
+  if (e.target && e.target.matches && e.target.matches(AUTOSIZE_SEL)) autosize(e.target);
+});
+// childList only — setting style.height is an attribute change, so this cannot loop.
+new MutationObserver(queueAutosize).observe(document.documentElement, { childList: true, subtree: true });
+
 async function api(method, path, body) {
   const res = await fetch(path, {
     method,

@@ -393,7 +393,8 @@ tbody tr:hover td[colspan] { background: transparent; }
   padding: 13px 15px; transition: border-color var(--dur) var(--ease); }
 .list-item:hover { border-color: var(--line2); }
 .list-item input, .list-item select, .list-item textarea { background: var(--panel); }
-.list-item textarea { min-height: 64px; }
+
+.list-item textarea { min-height: 64px; max-height: 104px; overflow-y: auto; }
 
 /* --- section headings inside cards --- */
 .card h2 .muted.small { font-weight: 500; }
