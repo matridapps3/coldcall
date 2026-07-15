@@ -61,6 +61,60 @@ function toast(msg) {
   toastTimer = setTimeout(() => t.remove(), 2200);
 }
 
+// ---------- modal dialogs ----------
+// In-app replacements for native confirm() / prompt() so dialogs match the theme.
+// Both return a promise, so call sites keep the same shape as before:
+//   if (await confirmDialog('Delete this?')) { ... }
+//   const name = await promptDialog('Mode name');    // null when cancelled
+function modal({ title, message, input = false, placeholder = '', confirmText = 'Confirm', danger = false }) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true">
+        ${title ? `<div class="modal-title">${esc(title)}</div>` : ''}
+        ${message ? `<div class="modal-msg">${esc(message)}</div>` : ''}
+        ${input ? `<input class="modal-input" placeholder="${esc(placeholder)}" autocomplete="off"/>` : ''}
+        <div class="modal-actions">
+          <button data-cancel class="btn-quiet">Cancel</button>
+          <button data-ok class="${danger ? 'btn-danger' : 'primary'}">${esc(confirmText)}</button>
+        </div>
+      </div>`;
+    const prevFocus = document.activeElement;
+    document.body.appendChild(overlay);
+    const field = $('.modal-input', overlay);
+    const close = (val) => {
+      document.removeEventListener('keydown', onKey, true);
+      overlay.remove();
+      // Hand focus back to whatever opened the dialog, if it still exists.
+      if (prevFocus && document.contains(prevFocus) && prevFocus.focus) prevFocus.focus();
+      resolve(val);
+    };
+    const ok = () => close(input ? (field.value.trim() || null) : true);
+    const cancel = () => close(input ? null : false);
+    // Capture phase so Escape and Tab are handled before any other handler sees them.
+    const onKey = (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancel(); return; }
+      if (e.key !== 'Tab') return;
+      // Focus trap: keep tabbing inside the dialog instead of wandering behind it.
+      const els = [...overlay.querySelectorAll('button, input')].filter((el) => !el.disabled);
+      if (!els.length) return;
+      const first = els[0], last = els[els.length - 1], active = document.activeElement;
+      if (!overlay.contains(active)) { e.preventDefault(); first.focus(); }
+      else if (e.shiftKey && active === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
+    };
+    $('[data-ok]', overlay).onclick = ok;
+    $('[data-cancel]', overlay).onclick = cancel;
+    overlay.onclick = (e) => { if (e.target === overlay) cancel(); };
+    if (field) field.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); ok(); } });
+    document.addEventListener('keydown', onKey, true);
+    (field || $('[data-ok]', overlay)).focus();
+  });
+}
+const confirmDialog = (message, opts = {}) => modal({ message, ...opts });
+const promptDialog = (message, opts = {}) => modal({ message, input: true, confirmText: 'Create', ...opts });
+
 const state = { user: null, modes: [], modeId: null, modeTab: 'scripts' };
 
 // ---------- boot ----------
@@ -208,7 +262,9 @@ async function viewModes(v) {
   bar.append('Mode: ', modePicker(() => viewModes(v)));
   const newBtn = document.createElement('button'); newBtn.textContent = '+ New mode';
   newBtn.onclick = async () => {
-    const name = prompt('Mode name (e.g. Salons)'); if (!name) return;
+    const name = await promptDialog('Give the new mode a name. This is the vertical you are calling.',
+      { title: 'New mode', placeholder: 'e.g. Salons' });
+    if (!name) return;
     const { id } = await api('POST', '/api/modes', { name });
     await loadModes(); state.modeId = id; viewModes(v);
   };
@@ -306,7 +362,11 @@ async function renderFlowEditor(card, mode, refresh) {
     });
     $('[data-addopt]', nd).onclick = async () => { await api('POST', `/api/flow/${mode.id}/nodes/${node.id}/options`, { label: 'New response' }); refresh(); };
     $('[data-save]', nd).onclick = async () => { await api('PATCH', `/api/flow/${mode.id}/nodes/${node.id}`, { title: $('[data-title]', nd).value, say: $('[data-say]', nd).value, is_entry: $('[data-entry]', nd).checked }); toast('Node saved'); };
-    $('[data-del]', nd).onclick = async () => { if (confirm('Delete this node?')) { await api('DELETE', `/api/flow/${mode.id}/nodes/${node.id}`); refresh(); } };
+    $('[data-del]', nd).onclick = async () => {
+      const okd = await confirmDialog(`Delete "${node.title}" and all of its responses? This cannot be undone.`,
+        { title: 'Delete navigator step?', confirmText: 'Delete', danger: true });
+      if (okd) { await api('DELETE', `/api/flow/${mode.id}/nodes/${node.id}`); refresh(); }
+    };
     card.appendChild(nd);
   });
   const add = document.createElement('button'); add.className = 'small'; add.textContent = '+ Add node';
@@ -323,7 +383,11 @@ function contentEditor(mode, kind, title, refresh) {
       <div class="grow"></div><button data-save class="primary small">Save</button><button data-del class="small">Delete</button></div>
       <textarea data-b style="margin-top:8px">${esc(item.body)}</textarea>`;
     $('[data-save]', row).onclick = async () => { await api('PATCH', `/api/modes/${mode.id}/${kind}/${item.id}`, { title: $('[data-t]', row).value, body: $('[data-b]', row).value }); toast('Saved'); };
-    $('[data-del]', row).onclick = async () => { if (confirm('Delete?')) { await api('DELETE', `/api/modes/${mode.id}/${kind}/${item.id}`); refresh(); } };
+    $('[data-del]', row).onclick = async () => {
+      const okd = await confirmDialog(`Delete "${item.title}"? This cannot be undone.`,
+        { title: `Delete ${kind === 'scripts' ? 'call script' : 'WhatsApp template'}?`, confirmText: 'Delete', danger: true });
+      if (okd) { await api('DELETE', `/api/modes/${mode.id}/${kind}/${item.id}`); refresh(); }
+    };
     c.appendChild(row);
   });
   const add = document.createElement('button'); add.textContent = `+ Add ${kind === 'scripts' ? 'script' : 'template'}`; add.className = 'small';
@@ -374,7 +438,11 @@ function stepsEditor(mode, refresh) {
       await api('PUT', `/api/modes/${mode.id}/steps/${step.id}/rules`, rules);
       toast('Step saved');
     };
-    $('[data-del]', row).onclick = async () => { if (confirm('Delete step?')) { await api('DELETE', `/api/modes/${mode.id}/steps/${step.id}`); refresh(); } };
+    $('[data-del]', row).onclick = async () => {
+      const okd = await confirmDialog(`Delete the follow-up step "${step.title || 'untitled'}"? This cannot be undone.`,
+        { title: 'Delete sequence step?', confirmText: 'Delete', danger: true });
+      if (okd) { await api('DELETE', `/api/modes/${mode.id}/steps/${step.id}`); refresh(); }
+    };
     c.appendChild(row);
   });
   const add = document.createElement('button'); add.textContent = '+ Add step'; add.className = 'small';
@@ -941,7 +1009,8 @@ function moveSelection(v, delta) {
 function wireConsoleKeys(v) {
   if (window.__ccKeys) document.removeEventListener('keydown', window.__ccKeys);
   const h = (e) => {
-    if (state.tab !== 'call' || /input|textarea|select/i.test(e.target.tagName)) return;
+    // Ignore shortcuts while a dialog is open, else keys fire behind the overlay.
+    if (state.tab !== 'call' || $('.modal-overlay') || /input|textarea|select/i.test(e.target.tagName)) return;
     if (e.key === 'j') { e.preventDefault(); moveSelection(v, 1); }
     else if (e.key === 'k') { e.preventDefault(); moveSelection(v, -1); }
     else if (e.key === 'n') { e.preventDefault(); pullNext(v); }
@@ -1134,7 +1203,10 @@ function renderWork(workEl, w, v) {
     const msg = cold
       ? `${L.company} is still "${worth.verdict}" (${worth.reasons.join(', ') || 'no engagement yet'}). A demo costs the developer's time — generate it now anyway? Better: send a sample/message first, demo once they warm up.`
       : `Generate a demo build prompt for ${L.company}? The lead moves to the Demo lane while the developer builds it.`;
-    if (!confirm(msg)) return;
+    if (!(await confirmDialog(msg, {
+      title: cold ? 'Generate a demo anyway?' : 'Generate demo build?',
+      confirmText: 'Generate demo', danger: cold,
+    }))) return;
     try { await api('POST', '/api/queue/demo/request', { lead_id: L.id }); }
     catch (e) { toast(e.message || 'Could not start demo'); await loadConsole(v); return; }
     toast('Demo prompt ready — send it to the developer'); caller.selectedId = L.id; await loadConsole(v);
@@ -1143,7 +1215,8 @@ function renderWork(workEl, w, v) {
   if (copyP) copyP.onclick = () => { navigator.clipboard?.writeText(w.demo_prompt || ''); toast('Prompt copied'); };
   const abandon = $('#cc_abandondemo', workEl);
   if (abandon) abandon.onclick = async () => {
-    if (!confirm(`Abandon the demo for ${L.company}? The lead goes back into the normal queue at its current step.`)) return;
+    if (!(await confirmDialog(`Abandon the demo for ${L.company}? The lead goes back into the normal queue at its current step.`,
+      { title: 'Abandon demo?', confirmText: 'Abandon demo', danger: true }))) return;
     await api('POST', '/api/queue/demo/cancel', { lead_id: L.id });
     toast('Demo abandoned — lead back in queue'); caller.selectedId = L.id; await loadConsole(v);
   };

@@ -489,6 +489,23 @@ tbody tr:hover td[colspan] { background: transparent; }
 .pb-body mark { background: var(--accent-dim); color: var(--accent-hi); border-radius: 3px; padding: 0 2px; }
 @media (max-width: 520px){ .pb-drawer { width: 100vw; } }
 
+/* ---------- modal dialogs (styled confirm / prompt) ---------- */
+/* Sits above the playbook drawer (z 50) so a dialog opened from it still shows. */
+.modal-overlay { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.55);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  animation: pb-fade .12s var(--ease); }
+.modal { width: min(430px, 100%); background: var(--panel); border: 1px solid var(--line2);
+  border-radius: var(--radius); padding: 22px; box-shadow: var(--sh-3);
+  animation: modal-in .16s var(--ease); }
+@keyframes modal-in { from { opacity: 0; transform: translateY(6px) scale(.985); } to { opacity: 1; transform: none; } }
+.modal-title { font-size: var(--t-md); font-weight: 700; letter-spacing: -.015em; margin-bottom: 7px; }
+.modal-msg { color: var(--ink-dim); font-size: var(--t-base); line-height: 1.55; }
+.modal-input { margin-top: 15px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+button.btn-danger { background: var(--bad); border-color: var(--bad); color: #2b0707; }
+button.btn-danger:hover { background: #fca5a5; border-color: #fca5a5; }
+@media (prefers-reduced-motion: reduce) { .modal, .modal-overlay { animation: none; } }
+
 /* ---------- Fulfilment board + renewals + builder builds ---------- */
 .fx-metrics { display: flex; align-items: center; gap: 28px; padding: 15px 20px; }
 .fx-metric { display: flex; flex-direction: column; gap: 3px; }
